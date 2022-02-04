@@ -1,9 +1,19 @@
 # This is a basic workflow to help you get started with Actions
 
-name: CI
+name: Azure Function CI
 
 on:
-  [push]
+  push:
+    branches:
+      - main
+    paths: 
+      - 'src/Sample1/**'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+    paths:
+      - 'src/Sample1/**'
 
 # CONFIGURATION
 # For help, go to https://github.com/Azure/Actions
