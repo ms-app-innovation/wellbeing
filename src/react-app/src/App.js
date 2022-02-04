@@ -16,7 +16,7 @@ function App() {
 
 
   function callApi(score) { 
-    fetch('/api/wellbeing', {
+    fetch('/api/wellbeing?code=smnopU4EVD15Red5CTXbjQArKUsG9kVvBWFar8od1YBrTXnACxEY%2FQ%3D%3D', {
       method: 'post',
       headers: {'Content-Type':'application/json'},
       body: {
