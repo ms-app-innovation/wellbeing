@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './components/Button';
-// import { Textbox } from './components/Textbox';
+
 
 function App() {   
-
-  // const [name, setName] = React.useState('');
-  // const [email, setEmail] = React.useState('');
+  const [api, setApi] = React.useState('/api/wellbeing-v1');
   const [userInfo, setUserInfo] = useState();
   const redirect = window.location.pathname;
 
@@ -16,8 +14,8 @@ function App() {
   }, []);
 
 
-  function callApi(score) { 
-    fetch('/api/wellbeing', {
+  function callApi(score) {    
+    fetch(api, {
       method: 'post',
       headers: {'Content-Type':'application/json'},      
       body: JSON.stringify({
@@ -57,6 +55,20 @@ function App() {
             <Button onClick={() => callApi(3)} text="3"/>   
             <Button onClick={() => callApi(4)} text="4"/>   
             <Button onClick={() => callApi(5)} text="5"/>      
+            <p>
+               Select the backend pattern:
+                <select name="backendAPI" id="api" onChange={e => setApi(e.target.value)}>
+                  <option value="/api/wellbeing-v1">v1 - Tight Coupling</option>
+                  <option value="/api/wellbeing-v2">v2 - Storage Queue</option>
+                  <option value="/api/wellbeing-v3">v3 - Outbox Pattern</option>
+                  <option value="/api/wellbeing-v4">v4 - Broadcast Events</option>
+                  <option value="/api/wellbeing-v5">v5 - Process Manager</option>
+                  <option value="/api/wellbeing-v6">v6 - Choreography</option>
+                  <option value="/api/wellbeing-v7">v7 - Routing Slip</option>
+                  <option value="/api/wellbeing-v8">v8 - Process Manager v2</option>
+                  <option value="/api/wellbeing-v9">v9 - Event Sourcing</option>
+                </select>
+            </p>
           </div>
         }
       

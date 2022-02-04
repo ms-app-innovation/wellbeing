@@ -1,4 +1,4 @@
-﻿namespace Wellbeing.API
+﻿namespace Wellbeing.API.Functions
 {
     public class Parameters
     {

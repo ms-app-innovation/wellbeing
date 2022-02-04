@@ -1,4 +1,4 @@
-﻿namespace Wellbeing.API
+﻿namespace Wellbeing.API.Providers
 {
     public class RecommendationProvider
     {
