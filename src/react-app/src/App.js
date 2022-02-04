@@ -49,14 +49,15 @@ function App() {
       {/* <p>Name: <Textbox text={name} onChange={e => setName(e.target.value)}/></p>
       <p>Email: <Textbox text={email} onChange={e => setEmail(e.target.value)}/></p> */}
       
-        {userInfo && <div>
-          <p> How are you feeling today:? </p>
-        <Button onClick={() => callApi(1)} text="1"/>   
-        <Button onClick={() => callApi(2)} text="2"/>   
-        <Button onClick={() => callApi(3)} text="3"/>   
-        <Button onClick={() => callApi(4)} text="4"/>   
-        <Button onClick={() => callApi(5)} text="5"/>      
-        </div>
+        {userInfo && 
+          <div>
+            <p> How are you feeling today (on a scale of 1 to 5 with 5 being your best)?</p>
+            <Button onClick={() => callApi(1)} text="1"/>   
+            <Button onClick={() => callApi(2)} text="2"/>   
+            <Button onClick={() => callApi(3)} text="3"/>   
+            <Button onClick={() => callApi(4)} text="4"/>   
+            <Button onClick={() => callApi(5)} text="5"/>      
+          </div>
         }
       
     </div>     

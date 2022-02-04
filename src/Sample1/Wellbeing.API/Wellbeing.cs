@@ -1,10 +1,17 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters.Internal;
+using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Documents.Linq;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -18,9 +25,12 @@ namespace Wellbeing.API
     public class Wellbeing
     {
         private readonly ILogger<Wellbeing> _logger;
+        private readonly HttpClient _httpClient;
 
-        public Wellbeing(ILogger<Wellbeing> log)
+
+        public Wellbeing(ILogger<Wellbeing> log, HttpClient httpClient)
         {
+            _httpClient = httpClient;
             _logger = log;
         }
 
@@ -30,49 +40,54 @@ namespace Wellbeing.API
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(Parameters), Description = "Parameters", Required = true)]
 
         [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "text/plain", bodyType: typeof(string), Description = "The OK response")]
-        
-        public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req)
-        {
-            _logger.LogInformation("C# HTTP trigger function processed a request.");
 
-            
+        public async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+            [CosmosDB(databaseName: "wellbeing-db", collectionName: "wellbeing", ConnectionStringSetting = "CosmosDBConnectionString")] DocumentClient cosmosClient)
+        {
+            _logger.LogInformation("Wellbeing API has been called.");
+
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
             string name = data["name"];
             int score = Convert.ToInt32(data["score"]);
-            string email = data["email"];            
+            string email = data["email"];
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : new Recommendations(name, score).Recommendation;            
+            string responseMessage = string.IsNullOrEmpty(email)
+                ? "Invalid Inputs."
+                : new RecommendationProvider(name, score).Recommendation;
+
+            await SendEmailAsync(email, responseMessage);
+
+            await SaveStateAsync(cosmosClient, name, score, email, responseMessage);
+
+
+            _logger.LogInformation("Wellbeing API has been processed the recommendation.");
 
             return new JsonResult(responseMessage);
         }
-    }
 
-    public class Parameters
-    {
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public int Score { get; set; }
-    }
-
-    public class Recommendations
-    {
-        public string Recommendation { get; set; }
-        public Recommendations(string name, int score)
+        private static async Task SaveStateAsync(DocumentClient cosmosClient, string name, int score, string email, string responseMessage)
         {
-            Recommendation = score switch
-            {
-                0 => $"Oh no {name}! You seem to be very upset!",
-                1 => $"Oh {name}! You don't sound very well!",
-                2 => $"Hello {name}! You seem to be doing fine!",
-                3 => $"Hi {name}! You are feeling great!",
-                _ => $"Hey {name}! You are feeling on top of the world!!",
-            };
+            var doc = new { id = email, Name = name, Email = email, Score = score, Recommendation = responseMessage };
+            await cosmosClient.UpsertDocumentAsync("dbs/wellbeing-db/colls/recommendation/", doc);
+        }
+
+        private async Task SendEmailAsync(string emailId, string responseMessage)
+        {
+            var emailObject = new { EmailAddress = emailId, EmailSubject = "Hi", EmailMessage = responseMessage };
+            var content = new StringContent(JsonConvert.SerializeObject(emailObject), System.Text.Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync(GetEnvironmentVariable("EmailServiceUrl"), content);
+            if(response.StatusCode != HttpStatusCode.Accepted)
+            { 
+                throw new Exception("Unable to send email");
+            }
+        }
+
+        private static string GetEnvironmentVariable(string name)
+        {
+            return System.Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process);
         }
     }
-
 }
 
