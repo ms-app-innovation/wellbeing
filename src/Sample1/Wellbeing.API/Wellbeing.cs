@@ -41,15 +41,13 @@ namespace Wellbeing.API
             dynamic data = JsonConvert.DeserializeObject(requestBody);
             string name = data["name"];
             int score = Convert.ToInt32(data["score"]);
-            string email = data["email"];
-            
+            string email = data["email"];            
 
             string responseMessage = string.IsNullOrEmpty(name)
                 ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : new Recommendations(name, score).Recommendation;
-            
+                : new Recommendations(name, score).Recommendation;            
 
-            return new OkObjectResult(responseMessage);
+            return new JsonResult(responseMessage);
         }
     }
 

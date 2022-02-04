@@ -17,15 +17,14 @@ function App() {
 
   function callApi(score) { 
     fetch('/api/wellbeing', {
-      // fetch(' http://localhost:7071/api/Wellbeing', {
       method: 'post',
-      headers: {'Content-Type':'application/json'},
-      body: {
+      headers: {'Content-Type':'application/json'},      
+      body: JSON.stringify({
        "name": userInfo.userDetails,
         "email": userInfo.userDetails,
         "score": score 
-      }
-     }); 
+      })
+     }).then(response => response.json().then(data => {alert(data)})); 
   } 
  
   async function getUserInfo() {
