@@ -7,6 +7,7 @@ function App() {
   // const [name, setName] = React.useState('');
   // const [email, setEmail] = React.useState('');
   const [userInfo, setUserInfo] = useState();
+  const redirect = window.location.pathname;
 
   useEffect(() => {
     (async () => {
@@ -38,14 +39,13 @@ function App() {
       return undefined;
     }
   }
-
   
   return (     
     <div> 
       <h2>Contoso Wellbeing App</h2>
       <p>Hi {userInfo && userInfo.userDetails},</p>
-      <p>{!userInfo && <a href="/.auth/login/aad">Click here to Login</a>}</p>
-      <p>{userInfo && <a href={"/.auth/logout"}>Logout</a>}</p>
+      <p>{!userInfo && <a href={`/.auth/login/aad?post_login_redirect_uri=${redirect}`}>Click here to Login</a>}</p>
+      <p>{userInfo && <a href={`/.auth/logout?post_logout_redirect_uri=${redirect}`}>Logout</a>}</p>
       {/* <p>Name: <Textbox text={name} onChange={e => setName(e.target.value)}/></p>
       <p>Email: <Textbox text={email} onChange={e => setEmail(e.target.value)}/></p> */}
       
