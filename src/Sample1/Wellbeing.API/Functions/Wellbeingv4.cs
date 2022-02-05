@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
@@ -21,19 +22,19 @@ namespace Wellbeing.API.Functions;
 /// <summary>
 ///     This version uses an Outbox pattern, and a dispatcher, to handle the call to the Correspondence Service
 /// </summary>
-public class Wellbeingv3
+public class Wellbeingv4
 {
-    private readonly ILogger<Wellbeingv3> _logger;
+    private readonly ILogger<Wellbeingv4> _logger;
     private readonly CorrespondenceService _correspondenceService;
 
-    public Wellbeingv3(ILogger<Wellbeingv3> log, CorrespondenceService correspondenceService)
+    public Wellbeingv4(ILogger<Wellbeingv4> log, CorrespondenceService correspondenceService)
     {
         _logger = log;
         _correspondenceService = correspondenceService;
     }
 
 
-    [FunctionName("Wellbeing-v3")]
+    [FunctionName("Wellbeing-v4")]
     [OpenApiOperation("Run", "name")]
     [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
     [OpenApiRequestBody("application/json", typeof(Parameters), Description = "Parameters", Required = true)]
@@ -60,11 +61,10 @@ public class Wellbeingv3
                 Score = score,
                 Email = email,
                 Recommendation = responseMessage,
-                Outbox = new []
+                Outbox = new[]
                 {
                     new OutgoingMessage()
                     {
-                        Id = Guid.NewGuid(),
                         Target = "CorrespondenceService",
                         Data = new Dictionary<string, string>
                         {
@@ -86,52 +86,40 @@ public class Wellbeingv3
     ///     The 2nd is the document with an empty outbox.
     ///     This has RU implications
     /// </summary>
-    /// <remarks>
-    /// https://docs.microsoft.com/en-us/azure/cosmos-db/sql/change-feed-pull-model#using-feedrange-for-parallelization
-    /// Currently you get one feed-range for a physical partition. If you had multiple partitions and one didn't have much throughput,
-    /// you would have a Kafka style scenario where one function instances would sit not doing much, whilst the other did all the work.
-    /// Contrast that to a competing-consumer pattern like you'd get with ServiceBus where load would be evenly spread across instances.
-    /// Same page says: "transaction scope is preserved when reading items from the Change Feed. As a result, the number of items received could be higher than the specified
-    /// I don't specify this but would be interesting to see if we push lots of load through as single transactions, if the number of items ever goes > 1.
-    /// </remarks>
-    [FunctionName("CosmosDispatcher")]
-    // Cosmos trigger purposefully moves on if there are user errors. In this scenario I don't want that so I use a Function attribute to retry until I process the messages.
-    [ExponentialBackoffRetry(-1, "00:00:01", "00:05:00")]
+    [FunctionName("DurableDispatcher")]
     public async Task Dispatcher(
-        [CosmosDBTrigger(
-            "wellbeing-db",
-            "recommendation",
-            Connection = "CosmosDBConnectionString",
-            LeaseContainerName = "leases",
-            CreateLeaseContainerIfNotExists = true)]
-        IReadOnlyList<WellBeingStatus> documents,
-        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]
-        CosmosClient cosmosClient
-    )
+        [CosmosDBTrigger("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString", LeaseContainerName = "leases", CreateLeaseContainerIfNotExists = true)] IReadOnlyList<WellBeingStatus> documents,
+        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")] CosmosClient cosmosClient,
+        [DurableClient] IDurableOrchestrationClient client)
     {
         if (documents != null && documents.Count > 0)
         {
             foreach (var document in documents)
                 if (document.Outbox?.Length > 0)
                 {
-                    foreach (var message in document.Outbox) await Dispatch(_correspondenceService, message);
+                    foreach (var message in document.Outbox) await client.StartNewAsync<OutgoingMessage>("Orchestrator", message);
                     document.Outbox = Array.Empty<OutgoingMessage>();
+
+                    //This is at least once messaging.
                     await DataService.SaveStateAsync(cosmosClient, document);
                 }
         }
+    }
+
+    [FunctionName("Orchestrator")]
+    public async Task<string> RunOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
+    {
+        // retrieves the organization name from the Orchestrator_HttpStart function
+        var message = context.GetInput<OutgoingMessage>();
+
+        await Dispatch(_correspondenceService, message);
+        return context.InstanceId;
     }
 
     private Task Dispatch(CorrespondenceService correspondenceService, OutgoingMessage message)
     {
         if (message.Target == "CorrespondenceService")
         {
-
-            if (Random.Shared.NextDouble() < 0.2)
-            {
-                _logger.LogWarning("Introducing random failure");
-                throw new ArgumentException("Introducing range exception to test function retry policy");
-            }
-
             return correspondenceService.SendEmailAsync(
                 message.Data["Email"],
                 message.Data["ResponseMessage"]);
