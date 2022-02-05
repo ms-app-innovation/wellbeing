@@ -39,10 +39,8 @@ public class Wellbeingv3
     [OpenApiRequestBody("application/json", typeof(Parameters), Description = "Parameters", Required = true)]
     [OpenApiResponseWithBody(HttpStatusCode.OK, "text/plain", typeof(string), Description = "The OK response")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]
-        HttpRequest req,
-        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]
-        CosmosClient cosmosClient)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")] CosmosClient cosmosClient)
     {
         _logger.LogInformation("Wellbeing API has been called");
 
@@ -52,9 +50,7 @@ public class Wellbeingv3
         int score = Convert.ToInt32(data["score"]);
         string email = data["email"];
 
-        var responseMessage = string.IsNullOrEmpty(email)
-            ? "Invalid Inputs."
-            : new RecommendationProvider(name, score).Recommendation;
+        var responseMessage = string.IsNullOrEmpty(email) ? "Invalid Inputs." : new RecommendationProvider(name, score).Recommendation;
 
         await DataService.SaveStateAsync(
             cosmosClient,

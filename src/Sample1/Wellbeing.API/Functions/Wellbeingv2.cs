@@ -19,6 +19,7 @@ using Wellbeing.API.Services;
 
 namespace Wellbeing.API.Functions;
 
+
 public class Wellbeingv2
 {
     private readonly CorrespondenceService _correspondenceService;
@@ -38,10 +39,9 @@ public class Wellbeingv2
     [OpenApiRequestBody("application/json", typeof(Parameters), Description = "Parameters", Required = true)]
     [OpenApiResponseWithBody(HttpStatusCode.OK, "text/plain", typeof(string), Description = "The OK response")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]
-        HttpRequest req,
-        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]
-        CosmosClient cosmosClient)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]CosmosClient cosmosClient,
+        [Queue("wellbeing-email-q"), StorageAccount("StorageConnectionString")] IAsyncCollector<OutgoingMessage> msg)
     {
         _logger.LogInformation("Wellbeing API has been called.");
 
@@ -55,7 +55,7 @@ public class Wellbeingv2
             ? "Invalid Inputs."
             : new RecommendationProvider(name, score).Recommendation;
 
-        await _correspondenceService.SendEmailAsync(email, responseMessage);
+        await StorageQueueService.QueueMessageAsync(msg, email, responseMessage);
 
         await DataService.SaveStateAsync(cosmosClient,
             new WellBeingStatus
