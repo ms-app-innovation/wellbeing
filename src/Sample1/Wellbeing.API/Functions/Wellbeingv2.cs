@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -24,23 +25,23 @@ public class Wellbeingv2
     private readonly ILogger<Wellbeingv2> _logger;
 
 
-    public Wellbeingv2(ILogger<Wellbeingv2> log, HttpClient httpClient)
+    public Wellbeingv2(ILogger<Wellbeingv2> log, CorrespondenceService correspondenceService)
     {
         _logger = log;
-        _correspondenceService = new CorrespondenceService(httpClient);
+        _correspondenceService = correspondenceService;
     }
 
 
     [FunctionName("Wellbeing-v2")]
-    [OpenApiOperation("Run", new[] { "name" })]
+    [OpenApiOperation("Run", "name")]
     [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
     [OpenApiRequestBody("application/json", typeof(Parameters), Description = "Parameters", Required = true)]
     [OpenApiResponseWithBody(HttpStatusCode.OK, "text/plain", typeof(string), Description = "The OK response")]
     public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]
         HttpRequest req,
-        [CosmosDB("wellbeing-db", "wellbeing", ConnectionStringSetting = "CosmosDBConnectionString")]
-        DocumentClient cosmosClient)
+        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]
+        CosmosClient cosmosClient)
     {
         _logger.LogInformation("Wellbeing API has been called.");
 
@@ -56,7 +57,14 @@ public class Wellbeingv2
 
         await _correspondenceService.SendEmailAsync(email, responseMessage);
 
-        await DataService.SaveStateAsync(cosmosClient, name, score, email, responseMessage);
+        await DataService.SaveStateAsync(cosmosClient,
+            new WellBeingStatus
+            {
+                Name = name,
+                Score = score,
+                Email = email,
+                Recommendation = responseMessage
+            });
 
 
         _logger.LogInformation("Wellbeing API has been processed the recommendation.");
