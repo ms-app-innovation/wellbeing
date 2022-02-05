@@ -1,10 +1,10 @@
 ﻿using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
-using MyNamespace;
+using Wellbeing.API;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
-namespace MyNamespace;
+namespace Wellbeing.API;
 
 public class Startup : FunctionsStartup
 {
