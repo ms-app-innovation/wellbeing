@@ -67,32 +67,6 @@ public class Wellbeingv4
         return new JsonResult(responseMessage);
     }
 
-    /// <summary>
-    ///     Side effect of using Cosmos Change feed is that we will receive 2 changes for every message
-    ///     The 1st is the document with the messages.
-    ///     The 2nd is the document with an empty outbox.
-    ///     This has RU implications
-    /// </summary>
-    [FunctionName("DurableDispatcher")]
-    public async Task Dispatcher(
-        [CosmosDBTrigger("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString", LeaseContainerName = "leases", CreateLeaseContainerIfNotExists = true)] IReadOnlyList<WellBeingStatus> documents,
-        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")] CosmosClient cosmosClient,
-        [DurableClient] IDurableOrchestrationClient client)
-    {
-        if (documents != null && documents.Count > 0)
-        {
-            foreach (var document in documents)
-                if (document.Outbox?.Count > 0)
-                {
-                    foreach (var message in document.Outbox) await client.StartNewAsync("Orchestrator", message);
-                    document.Outbox = new List<OutgoingMessage>();
-
-                    //This is at least once messaging.
-                    await DataService.SaveStateAsync(cosmosClient, document);
-                }
-        }
-    }
-
     [FunctionName("Orchestrator")]
     public async Task<string> RunOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
     {
@@ -111,7 +85,6 @@ public class Wellbeingv4
                 message.Data["Email"],
                 message.Data["ResponseMessage"]);
         }
-
         return Task.CompletedTask;
     }
 }

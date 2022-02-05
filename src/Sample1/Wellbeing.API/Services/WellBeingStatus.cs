@@ -20,20 +20,11 @@ public class WellBeingStatus
     public string Recommendation { get; set; }
     public List<OutgoingMessage> Outbox { get; set; }
 
-    public void RecordNewWellbeingStatus(string responseMessage, int score)
+    public void RecordNewWellbeingStatus(string responseMessage, int score, params OutgoingMessage[] outboxMessages)
     {
         Recommendation = responseMessage;
         Score = score;
         Outbox ??= new List<OutgoingMessage>();
-        Outbox.Add(new OutgoingMessage()
-        {
-            Id = Guid.NewGuid(),
-            Target = "CorrespondenceService",
-            Data = new Dictionary<string, string>
-            {
-                ["ResponseMessage"] = responseMessage
-            }
-        });
-
+        Outbox.AddRange(outboxMessages);
     }
 }
