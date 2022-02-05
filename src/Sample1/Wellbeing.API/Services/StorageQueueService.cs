@@ -13,8 +13,6 @@ namespace Wellbeing.API.Services
     {
         public async static Task QueueMessageAsync(IAsyncCollector<OutgoingMessage> msg, string email, string responseMessage)
         {
-            //var message = JsonConvert.SerializeObject(new { email, responseMessage });
-
             var message = new OutgoingMessage()
             {
                 Target = "CorrespondenceService",

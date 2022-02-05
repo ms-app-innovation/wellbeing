@@ -71,4 +71,18 @@ public class Wellbeingv2
 
         return new JsonResult(responseMessage);
     }
+
+    [FunctionName("WellbeingEmailer")]
+    public async Task WellbeingEmailer(
+        [QueueTrigger("wellbeing-email-q"), StorageAccount("StorageConnectionString")] OutgoingMessage message,
+        ILogger log)
+    {
+        if (message.Target == "CorrespondenceService")
+        {
+            await _correspondenceService.SendEmailAsync(
+                message.Data["Email"],
+                message.Data["ResponseMessage"]);
+        }
+        log.LogInformation($"C# queue emails sent");
+    }
 }
