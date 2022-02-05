@@ -81,6 +81,7 @@ public class Wellbeingv2
         {
             await _correspondenceService.SendEmailAsync(
                 message.Data["Email"],
+                "Task Queue",
                 message.Data["ResponseMessage"]);
         }
         log.LogInformation($"C# queue emails sent");

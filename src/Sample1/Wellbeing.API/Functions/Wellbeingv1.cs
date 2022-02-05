@@ -51,7 +51,7 @@ public class Wellbeingv1
 
         var responseMessage = string.IsNullOrEmpty(email) ? "Invalid Inputs.": new RecommendationProvider(name, score).Recommendation;
 
-        await _correspondenceService.SendEmailAsync(email, responseMessage);
+        await _correspondenceService.SendEmailAsync(email, "Tightly Coupled", responseMessage);
 
         await DataService.SaveStateAsync(cosmosClient, new WellBeingStatus
         {

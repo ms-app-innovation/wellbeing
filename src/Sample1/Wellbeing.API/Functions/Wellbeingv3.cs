@@ -66,7 +66,8 @@ public class Wellbeingv3
             Target = "CorrespondenceService",
             Data = new Dictionary<string, string>
             {
-                ["ResponseMessage"] = responseMessage
+                ["ResponseMessage"] = responseMessage,
+                ["MessageType"] = "Cosmos Change Feed"
             }
         });
         

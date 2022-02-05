@@ -83,6 +83,7 @@ public class Wellbeingv4
         {
             return correspondenceService.SendEmailAsync(
                 message.Data["Email"],
+                "",
                 message.Data["ResponseMessage"]);
         }
         return Task.CompletedTask;

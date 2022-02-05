@@ -74,7 +74,9 @@ public class CosmosDispatcher
 
             return correspondenceService.SendEmailAsync(
                 entity.Email,
-                message.Data["ResponseMessage"]);
+                message.Data.ContainsKey("MessageType") ? message.Data["MessageType"] : "Unknown Type",
+            message.Data["ResponseMessage"]
+                );
         }
 
         return Task.CompletedTask;

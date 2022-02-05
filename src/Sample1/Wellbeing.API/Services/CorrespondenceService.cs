@@ -19,9 +19,15 @@ public class CorrespondenceService
         _logger = logger;
     }
 
-    public async Task SendEmailAsync(string emailId, string responseMessage)
+    public async Task SendEmailAsync(string emailId, string messagingType, string responseMessage)
     {
-        var emailObject = new { EmailAddress = emailId, EmailSubject = "Your Wellbeing", EmailMessage = responseMessage };
+        var emailObject = new
+        {
+            EmailAddress = emailId, 
+            EmailSubject = "Your Wellbeing", 
+            EmailMessage = $@"Sent using {messagingType}
+{responseMessage}"
+        };
         var content = new StringContent(JsonConvert.SerializeObject(emailObject), Encoding.UTF8, "application/json");
         var response = await _httpClient.PostAsync(GetEnvironmentVariable("EmailServiceUrl"), content);
         _logger.LogInformation("Corresponded to {Employee}", emailId);
