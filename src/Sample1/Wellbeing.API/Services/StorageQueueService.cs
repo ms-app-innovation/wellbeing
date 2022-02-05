@@ -1,29 +1,24 @@
-﻿using Microsoft.Azure.WebJobs;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Nodes;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs;
 
-namespace Wellbeing.API.Services
+namespace Wellbeing.API.Services;
+
+public class StorageQueueService
 {
-    public class StorageQueueService
+    public static async Task QueueMessageAsync(IAsyncCollector<OutgoingMessage> msg, string email,
+        string responseMessage)
     {
-        public async static Task QueueMessageAsync(IAsyncCollector<OutgoingMessage> msg, string email, string responseMessage)
+        var message = new OutgoingMessage
         {
-            var message = new OutgoingMessage()
+            Target = "CorrespondenceService",
+            Data = new Dictionary<string, string>
             {
-                Target = "CorrespondenceService",
-                Data = new Dictionary<string, string>
-                {
-                    ["Email"] = email,
-                    ["ResponseMessage"] = responseMessage
-                }
-            };
+                ["Email"] = email,
+                ["ResponseMessage"] = responseMessage
+            }
+        };
 
-            await msg.AddAsync(message);
-        }
+        await msg.AddAsync(message);
     }
 }

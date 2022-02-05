@@ -1,20 +1,16 @@
-using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Documents;
 using Newtonsoft.Json;
 
 namespace Wellbeing.API.Services;
 
 public class WellBeingStatus
 {
-    [JsonProperty("id")]
-    public string Id => Email;
+    [JsonProperty("id")] public string Id => Email;
 
-    [JsonProperty("_etag")]
-    public string ETag { get; set; }
+    [JsonProperty("_etag")] public string ETag { get; set; }
 
-    [JsonProperty("name")]
-    public string Name { get; set; }
+    [JsonProperty("name")] public string Name { get; set; }
+
     public string Email { get; set; }
     public int Score { get; set; }
     public string Recommendation { get; set; }

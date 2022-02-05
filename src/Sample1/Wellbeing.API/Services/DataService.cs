@@ -12,7 +12,7 @@ public class DataService
     {
         var container = cosmosClient.GetDatabase("wellbeing-db").GetContainer("recommendation");
         await container.UpsertItemAsync(
-            status, new PartitionKey(status.Email), new ItemRequestOptions()
+            status, new PartitionKey(status.Email), new ItemRequestOptions
             {
                 IfMatchEtag = status.ETag
             });
@@ -24,7 +24,7 @@ public class DataService
         try
         {
             var item = await container.ReadItemAsync<WellBeingStatus>(
-                id, 
+                id,
                 new PartitionKey(id));
 
             return item.Resource;

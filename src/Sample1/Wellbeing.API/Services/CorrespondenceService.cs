@@ -23,8 +23,8 @@ public class CorrespondenceService
     {
         var emailObject = new
         {
-            EmailAddress = emailId, 
-            EmailSubject = "Your Wellbeing", 
+            EmailAddress = emailId,
+            EmailSubject = "Your Wellbeing",
             EmailMessage = $@"Sent using {messagingType}<br>
 -----------------------<br>
 {responseMessage}"

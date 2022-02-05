@@ -24,8 +24,8 @@ namespace Wellbeing.API.Functions;
 /// </summary>
 public class Wellbeingv4
 {
-    private readonly ILogger<Wellbeingv4> _logger;
     private readonly CorrespondenceService _correspondenceService;
+    private readonly ILogger<Wellbeingv4> _logger;
 
     public Wellbeingv4(ILogger<Wellbeingv4> log, CorrespondenceService correspondenceService)
     {
@@ -40,8 +40,10 @@ public class Wellbeingv4
     [OpenApiRequestBody("application/json", typeof(Parameters), Description = "Parameters", Required = true)]
     [OpenApiResponseWithBody(HttpStatusCode.OK, "text/plain", typeof(string), Description = "The OK response")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
-        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")] CosmosClient cosmosClient)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]
+        HttpRequest req,
+        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]
+        CosmosClient cosmosClient)
     {
         _logger.LogInformation("Wellbeing API has been called");
 
@@ -51,16 +53,29 @@ public class Wellbeingv4
         int score = Convert.ToInt32(data["score"]);
         string email = data["email"];
 
-        var responseMessage = string.IsNullOrEmpty(email) ? "Invalid Inputs." : new RecommendationProvider(name, score).Recommendation;
+        var responseMessage = string.IsNullOrEmpty(email)
+            ? "Invalid Inputs."
+            : new RecommendationProvider(name, score).Recommendation;
 
         var existing = await DataService.FetchAsync(cosmosClient, email);
-        existing ??= new WellBeingStatus()
+        existing ??= new WellBeingStatus
         {
             Email = email,
             Name = name,
             Score = score
         };
-        existing.RecordNewWellbeingStatus(responseMessage, score);
+        existing.RecordNewWellbeingStatus(responseMessage, score, new OutgoingMessage()
+        {
+            Target = "Orchestrator",
+            Id = Guid.NewGuid(),
+            Data = new Dictionary<string, string>
+            {
+                ["OrchestratorName"] = "Orchestrator",
+                ["ResponseMessage"] = responseMessage
+            }
+        });
+
+        await DataService.SaveStateAsync(cosmosClient, existing);
 
         _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
 
@@ -73,19 +88,21 @@ public class Wellbeingv4
         // retrieves the organization name from the Orchestrator_HttpStart function
         var message = context.GetInput<OutgoingMessage>();
 
-        await Dispatch(_correspondenceService, message);
+        await context.CallActivityWithRetryAsync(
+            "SendMessageActivity",
+            new RetryOptions(TimeSpan.FromSeconds(1), 10),
+            message);
+
         return context.InstanceId;
     }
 
-    private Task Dispatch(CorrespondenceService correspondenceService, OutgoingMessage message)
+    [FunctionName("SendMessageActivity")]
+    public Task SendMessageActivity(
+        [ActivityTrigger] IDurableActivityContext context)
     {
-        if (message.Target == "CorrespondenceService")
-        {
-            return correspondenceService.SendEmailAsync(
-                message.Data["Email"],
-                "",
-                message.Data["ResponseMessage"]);
-        }
+        var message = context.GetInput<OutgoingMessage>();
+        //var entity = await DataService.FetchAsync(_)
+        //_correspondenceService.SendEmailAsync(message.)
         return Task.CompletedTask;
     }
 }
