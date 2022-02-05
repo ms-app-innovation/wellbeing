@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
@@ -21,19 +22,19 @@ namespace Wellbeing.API.Functions;
 /// <summary>
 ///     This version uses an Outbox pattern, and a dispatcher, to handle the call to the Correspondence Service
 /// </summary>
-public class Wellbeingv3
+public class Wellbeingv4
 {
-    private readonly ILogger<Wellbeingv3> _logger;
+    private readonly ILogger<Wellbeingv4> _logger;
     private readonly CorrespondenceService _correspondenceService;
 
-    public Wellbeingv3(ILogger<Wellbeingv3> log, CorrespondenceService correspondenceService)
+    public Wellbeingv4(ILogger<Wellbeingv4> log, CorrespondenceService correspondenceService)
     {
         _logger = log;
         _correspondenceService = correspondenceService;
     }
 
 
-    [FunctionName("Wellbeing-v3")]
+    [FunctionName("Wellbeing-v4")]
     [OpenApiOperation("Run", "name")]
     [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
     [OpenApiRequestBody("application/json", typeof(Parameters), Description = "Parameters", Required = true)]
@@ -60,7 +61,7 @@ public class Wellbeingv3
                 Score = score,
                 Email = email,
                 Recommendation = responseMessage,
-                Outbox = new []
+                Outbox = new[]
                 {
                     new OutgoingMessage()
                     {
@@ -85,32 +86,35 @@ public class Wellbeingv3
     ///     The 2nd is the document with an empty outbox.
     ///     This has RU implications
     /// </summary>
-    //[FunctionName("CosmosDispatcher")]
-    //public async Task Dispatcher(
-    //    [CosmosDBTrigger(
-    //        "wellbeing-db",
-    //        "recommendation",
-    //        Connection = "CosmosDBConnectionString",
-    //        LeaseContainerName = "leases",
-    //        CreateLeaseContainerIfNotExists = true)]
-    //    IReadOnlyList<WellBeingStatus> documents,
-    //    [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]
-    //    CosmosClient cosmosClient
-    //)
-    //{
-    //    if (documents != null && documents.Count > 0)
-    //    {
-    //        foreach (var document in documents)
-    //            if (document.Outbox?.Length > 0)
-    //            {
-    //                foreach (var message in document.Outbox) await Dispatch(_correspondenceService, message);
-    //                document.Outbox = Array.Empty<OutgoingMessage>();
+    [FunctionName("DurableDispatcher")]
+    public async Task Dispatcher(
+        [CosmosDBTrigger("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString", LeaseContainerName = "leases", CreateLeaseContainerIfNotExists = true)] IReadOnlyList<WellBeingStatus> documents,
+        [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")] CosmosClient cosmosClient,
+        [DurableClient] IDurableOrchestrationClient client)
+    {
+        if (documents != null && documents.Count > 0)
+        {
+            foreach (var document in documents)
+                if (document.Outbox?.Length > 0)
+                {
+                    foreach (var message in document.Outbox) await client.StartNewAsync<OutgoingMessage>("Orchestrator", message);
+                    document.Outbox = Array.Empty<OutgoingMessage>();
 
-    //                //This is at least once messaging.
-    //                await DataService.SaveStateAsync(cosmosClient, document);
-    //            }
-    //    }
-    //}
+                    //This is at least once messaging.
+                    await DataService.SaveStateAsync(cosmosClient, document);
+                }
+        }
+    }
+
+    [FunctionName("Orchestrator")]
+    public async Task<string> RunOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
+    {
+        // retrieves the organization name from the Orchestrator_HttpStart function
+        var message = context.GetInput<OutgoingMessage>();
+
+        await Dispatch(_correspondenceService, message);
+        return context.InstanceId;
+    }
 
     private Task Dispatch(CorrespondenceService correspondenceService, OutgoingMessage message)
     {
