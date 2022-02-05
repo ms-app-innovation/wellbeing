@@ -25,7 +25,8 @@ public class CorrespondenceService
         {
             EmailAddress = emailId, 
             EmailSubject = "Your Wellbeing", 
-            EmailMessage = $@"Sent using {messagingType}
+            EmailMessage = $@"Sent using {messagingType}<br>
+-----------------------<br>
 {responseMessage}"
         };
         var content = new StringContent(JsonConvert.SerializeObject(emailObject), Encoding.UTF8, "application/json");
