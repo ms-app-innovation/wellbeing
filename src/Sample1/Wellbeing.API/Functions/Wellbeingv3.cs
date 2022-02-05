@@ -52,28 +52,15 @@ public class Wellbeingv3
 
         var responseMessage = string.IsNullOrEmpty(email) ? "Invalid Inputs." : new RecommendationProvider(name, score).Recommendation;
 
-        await DataService.SaveStateAsync(
-            cosmosClient,
-            new WellBeingStatus
-            {
-                Name = name,
-                Score = score,
-                Email = email,
-                Recommendation = responseMessage,
-                Outbox = new []
-                {
-                    new OutgoingMessage()
-                    {
-                        Id = Guid.NewGuid(),
-                        Target = "CorrespondenceService",
-                        Data = new Dictionary<string, string>
-                        {
-                            ["Email"] = email,
-                            ["ResponseMessage"] = responseMessage
-                        }
-                    }
-                }
-            });
+        var existing = await DataService.FetchAsync(cosmosClient, email);
+        existing ??= new WellBeingStatus()
+        {
+            Email = email,
+            Name = name,
+            Score = score
+        };
+        existing.RecordNewWellbeingStatus(responseMessage, score);
+        await DataService.SaveStateAsync(cosmosClient, existing);
 
         _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
 
@@ -112,10 +99,10 @@ public class Wellbeingv3
         if (documents != null && documents.Count > 0)
         {
             foreach (var document in documents)
-                if (document.Outbox?.Length > 0)
+                if (document.Outbox?.Count > 0)
                 {
                     foreach (var message in document.Outbox) await Dispatch(_correspondenceService, message);
-                    document.Outbox = Array.Empty<OutgoingMessage>();
+                    document.Outbox = new List<OutgoingMessage>();
                     await DataService.SaveStateAsync(cosmosClient, document);
                 }
         }

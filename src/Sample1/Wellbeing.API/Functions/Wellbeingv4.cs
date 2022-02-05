@@ -53,27 +53,14 @@ public class Wellbeingv4
 
         var responseMessage = string.IsNullOrEmpty(email) ? "Invalid Inputs." : new RecommendationProvider(name, score).Recommendation;
 
-        await DataService.SaveStateAsync(
-            cosmosClient,
-            new WellBeingStatus
-            {
-                Name = name,
-                Score = score,
-                Email = email,
-                Recommendation = responseMessage,
-                Outbox = new[]
-                {
-                    new OutgoingMessage()
-                    {
-                        Target = "CorrespondenceService",
-                        Data = new Dictionary<string, string>
-                        {
-                            ["Email"] = email,
-                            ["ResponseMessage"] = responseMessage
-                        }
-                    }
-                }
-            });
+        var existing = await DataService.FetchAsync(cosmosClient, email);
+        existing ??= new WellBeingStatus()
+        {
+            Email = email,
+            Name = name,
+            Score = score
+        };
+        existing.RecordNewWellbeingStatus(responseMessage, score);
 
         _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
 
@@ -95,10 +82,10 @@ public class Wellbeingv4
         if (documents != null && documents.Count > 0)
         {
             foreach (var document in documents)
-                if (document.Outbox?.Length > 0)
+                if (document.Outbox?.Count > 0)
                 {
-                    foreach (var message in document.Outbox) await client.StartNewAsync<OutgoingMessage>("Orchestrator", message);
-                    document.Outbox = Array.Empty<OutgoingMessage>();
+                    foreach (var message in document.Outbox) await client.StartNewAsync("Orchestrator", message);
+                    document.Outbox = new List<OutgoingMessage>();
 
                     //This is at least once messaging.
                     await DataService.SaveStateAsync(cosmosClient, document);

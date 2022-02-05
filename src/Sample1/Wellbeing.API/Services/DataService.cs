@@ -1,6 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.Net;
+using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Documents.Client;
 
 namespace Wellbeing.API.Services;
 
@@ -11,6 +11,17 @@ public class DataService
         WellBeingStatus status)
     {
         var container = cosmosClient.GetDatabase("wellbeing-db").GetContainer("recommendation");
-        await container.UpsertItemAsync(status);
+        await container.UpsertItemAsync(
+            status, new PartitionKey(status.Email), new ItemRequestOptions()
+            {
+                IfMatchEtag = status.ETag
+            });
+    }
+
+    public static async Task<WellBeingStatus> FetchAsync(CosmosClient cosmosClient, string id)
+    {
+        var container = cosmosClient.GetDatabase("wellbeing-db").GetContainer("recommendation");
+        var item = await container.ReadItemAsync<WellBeingStatus>(id, new PartitionKey(id));
+        return item.StatusCode == HttpStatusCode.NotFound ? null : item.Resource;
     }
 }
