@@ -21,7 +21,18 @@ public class DataService
     public static async Task<WellBeingStatus> FetchAsync(CosmosClient cosmosClient, string id)
     {
         var container = cosmosClient.GetDatabase("wellbeing-db").GetContainer("recommendation");
-        var item = await container.ReadItemAsync<WellBeingStatus>(id, new PartitionKey(id));
-        return item.StatusCode == HttpStatusCode.NotFound ? null : item.Resource;
+        try
+        {
+            var item = await container.ReadItemAsync<WellBeingStatus>(
+                id, 
+                new PartitionKey(id));
+
+            return item.Resource;
+        }
+        catch (CosmosException ce)
+        {
+            if (ce.StatusCode == HttpStatusCode.NotFound) return null;
+            throw;
+        }
     }
 }

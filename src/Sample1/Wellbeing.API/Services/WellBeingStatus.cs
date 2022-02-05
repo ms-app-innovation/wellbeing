@@ -12,6 +12,8 @@ public class WellBeingStatus
 
     [JsonProperty("_etag")]
     public string ETag { get; set; }
+
+    [JsonProperty("name")]
     public string Name { get; set; }
     public string Email { get; set; }
     public int Score { get; set; }
@@ -22,6 +24,7 @@ public class WellBeingStatus
     {
         Recommendation = responseMessage;
         Score = score;
+        Outbox ??= new List<OutgoingMessage>();
         Outbox.Add(new OutgoingMessage()
         {
             Id = Guid.NewGuid(),
