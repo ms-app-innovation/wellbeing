@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
+using Azure.Messaging.EventGrid;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.EventGrid;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
@@ -70,6 +72,7 @@ public class Wellbeingv4
             Id = Guid.NewGuid(),
             Data = new Dictionary<string, string>
             {
+                ["Id"] = email,
                 ["OrchestratorName"] = "Orchestrator",
                 ["ResponseMessage"] = responseMessage
             }
@@ -83,26 +86,39 @@ public class Wellbeingv4
     }
 
     [FunctionName("Orchestrator")]
-    public async Task<string> RunOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
+    public async Task RunOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
     {
-        // retrieves the organization name from the Orchestrator_HttpStart function
         var message = context.GetInput<OutgoingMessage>();
 
-        await context.CallActivityWithRetryAsync(
+        var parallelTasks = new List<Task>();        
+
+        parallelTasks.Add(context.CallActivityWithRetryAsync(
             "SendMessageActivity",
             new RetryOptions(TimeSpan.FromSeconds(1), 10),
-            message);
+            message));
 
-        return context.InstanceId;
+        parallelTasks.Add(context.CallActivityWithRetryAsync(
+            "BroadcastSentimentActivity",
+            new RetryOptions(TimeSpan.FromSeconds(1), 10),
+            message));
+
+        await Task.WhenAll(parallelTasks);
     }
 
     [FunctionName("SendMessageActivity")]
-    public Task SendMessageActivity(
+    public async Task SendMessageActivity(
         [ActivityTrigger] IDurableActivityContext context)
     {
-        var message = context.GetInput<OutgoingMessage>();
-        //var entity = await DataService.FetchAsync(_)
-        //_correspondenceService.SendEmailAsync(message.)
-        return Task.CompletedTask;
+        var message = context.GetInput<OutgoingMessage>();        
+        await _correspondenceService.SendEmailAsync(message.Data["Id"], message.Data["ResponseMessage"], "Durable Function Send Message Activity");
+    }
+
+    [FunctionName("BroadcastSentimentActivity")]
+    public async Task BroadcastSentimentActivity(
+    [ActivityTrigger] IDurableActivityContext context,
+    [EventGrid(TopicEndpointUri = "EventGridTopicUri", TopicKeySetting = "EventGridTopicKey")] IAsyncCollector<EventGridEvent> outputEvents)
+    {
+        var message = context.GetInput<OutgoingMessage>();        
+        await outputEvents.AddAsync(new EventGridEvent("subject", "eventType", "dataVersion", message));
     }
 }

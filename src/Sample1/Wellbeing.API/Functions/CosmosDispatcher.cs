@@ -88,13 +88,15 @@ public class CosmosDispatcher
             }
 
             await correspondenceService.SendEmailAsync(
-                entity.Email,
-                message.Data.ContainsKey("MessageType") ? message.Data["MessageType"] : "Unknown Type",
-                message.Data["ResponseMessage"]
+                entity.Email,                
+                message.Data["ResponseMessage"],
+                message.Data.ContainsKey("MessageType") ? message.Data["MessageType"] : "Unknown Type"
             );
         } else  if (message.Target == "Orchestrator")
         {
-            await durableOrchestrationClient.StartNewAsync(message.Data["OrchestratorName"], message);
+            //TODO: Graeme to help determine why Orchestrator name is not being retrieved here - until then its hardcoded
+            //await durableOrchestrationClient.StartNewAsync(message.Data["OrchestratorName"], message);
+            await durableOrchestrationClient.StartNewAsync("Orchestrator", message);
         }
     }
 }

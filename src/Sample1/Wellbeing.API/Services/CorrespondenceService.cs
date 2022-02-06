@@ -19,7 +19,7 @@ public class CorrespondenceService
         _logger = logger;
     }
 
-    public async Task SendEmailAsync(string emailId, string messagingType, string responseMessage)
+    public async Task SendEmailAsync(string emailId, string responseMessage, string messagingType = "Unknown Type")
     {
         var emailObject = new
         {
