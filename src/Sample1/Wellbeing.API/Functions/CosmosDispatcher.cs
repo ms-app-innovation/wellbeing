@@ -59,13 +59,11 @@ public class CosmosDispatcher
     )
     {
         if (documents != null && documents.Count > 0)
-        {
             foreach (var document in documents)
-            {
                 while (document.Outbox?.Any() ?? false)
                 {
                     var message = document.Outbox.Last();
-                    
+
                     await Dispatch(
                         durableOrchestrationClient,
                         _correspondenceService,
@@ -73,12 +71,10 @@ public class CosmosDispatcher
                         message);
 
                     document.Outbox.Remove(message);
-                    
+
                     //Always update the state after successfully dispatching a message
                     await DataService.SaveStateAsync(cosmosClient, document);
                 }
-            }
-        }
     }
 
     private async Task Dispatch(
@@ -96,20 +92,18 @@ public class CosmosDispatcher
             }
 
             await correspondenceService.SendEmailAsync(
-                entity.Email,                
+                entity.Email,
                 message.Data["ResponseMessage"],
                 message.Data.ContainsKey("MessageType") ? message.Data["MessageType"] : "Unknown Type"
             );
-        } else  if (message.Target == "Orchestrator")
+        }
+        else if (message.Target == "Orchestrator")
         {
             if (message.Data.ContainsKey("OrchestratorName"))
-            {
                 await durableOrchestrationClient.StartNewAsync(message.Data["OrchestratorName"], message);
-            }
             else
-            {
-                _logger.LogWarning("Dispatcher received Orchestrator message but was missing OrchestratorName property inside the data bag.");
-            }
+                _logger.LogWarning(
+                    "Dispatcher received Orchestrator message but was missing OrchestratorName property inside the data bag.");
         }
     }
 }
