@@ -10,6 +10,12 @@ public class WellBeingStatusEventSourced : EventSourcedDomainObject
         RaiseEvent(createEvent);
     }
 
+    // ReSharper disable once UnusedMember.Global
+    protected WellBeingStatusEventSourced()
+    {
+        
+    }
+
     public string Recommendation { get; set; }
 
     public int Score { get; set; }

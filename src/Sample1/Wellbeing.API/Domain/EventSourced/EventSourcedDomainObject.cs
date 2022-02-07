@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq.Expressions;
 using System.Reflection;
 using Wellbeing.API.Services;
 
@@ -18,14 +19,14 @@ public abstract class EventSourcedDomainObject
 
     public void RaiseEvent(ISampleEventSourceEvent @event)
     {
+        Dispatch(@event);
         _raisedEvents.Add(new SerialisedEvent()
         {
-            Id = _eventCount,
+            Id = _eventCount.ToString(),
             CustomEvent = @event,
             EntityId = EntityId,
             CustomEventType = @event.GetType().FullName
         });
-        Dispatch(@event);
     }
 
     private bool _dispatching;
@@ -39,7 +40,8 @@ public abstract class EventSourcedDomainObject
         _dispatching = true;
         try
         {
-            Dispatch((dynamic)evt);
+            var method = GetType().GetMethod("Dispatch", BindingFlags.Instance | BindingFlags.NonPublic, types:new [] { evt.GetType()});
+            method.Invoke(this, new object [] { evt});
             _eventCount++;
         }
         finally
@@ -52,7 +54,7 @@ public abstract class EventSourcedDomainObject
 
     public static T Create<T>(List<ISampleEventSourceEvent> events) where T : EventSourcedDomainObject
     {
-        var entity = (T)Activator.CreateInstance(typeof(T), BindingFlags.NonPublic, events);
+        var entity = (T)Activator.CreateInstance(typeof(T), true)!;
         entity.Replay(events);
         return entity;
     }

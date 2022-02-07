@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Wellbeing.API.Domain.EventSourced;
 
 namespace Wellbeing.API.Services;
@@ -20,22 +21,31 @@ public class EventSourcedObjectRepository<T> where T : EventSourcedDomainObject
     public async Task<T> Get(string id)
     {
         var database = _cosmosClient.GetDatabase("wellbeing-db");
-        var containerResponse = await database.CreateContainerIfNotExistsAsync(nameof(T), "/entityId");
+        var containerResponse = await database.CreateContainerIfNotExistsAsync($"{typeof(T).Name}-events", "/entityId");
 
         var allEvents = new List<ISampleEventSourceEvent>();
 
         var events = containerResponse.Container.GetItemLinqQueryable<SerialisedEvent>(
+            true,
             requestOptions: new QueryRequestOptions
             {
                 PartitionKey = new PartitionKey(id)
             });
 
         foreach (var evt in events)
+        {
             //This code is not production grade! Just getting a sample up and running.
-            allEvents.Add((ISampleEventSourceEvent)JsonConvert.DeserializeObject(
-                JsonConvert.SerializeObject(evt.CustomEvent), Type.GetType(evt.CustomEventType)));
+            var customEventObject = (JObject)evt.CustomEvent;
+            var eventObject = (ISampleEventSourceEvent)customEventObject.ToObject(Type.GetType(evt.CustomEventType));
+            allEvents.Add(eventObject);
+        }
 
-        return EventSourcedDomainObject.Create<T>(allEvents);
+        if (allEvents.Any())
+        {
+            return EventSourcedDomainObject.Create<T>(allEvents);
+        }
+
+        return null;
     }
 
     public async Task Save(T entity)
@@ -44,13 +54,15 @@ public class EventSourcedObjectRepository<T> where T : EventSourcedDomainObject
         if (raisedEvents.Any())
         {
             var database = _cosmosClient.GetDatabase("wellbeing-db");
-            var containerResponse = await database.CreateContainerIfNotExistsAsync(nameof(T), "/entityId");
+            var containerResponse = await database.CreateContainerIfNotExistsAsync($"{typeof(T).Name}-events", "/entityId");
             var transaction = containerResponse.Container.CreateTransactionalBatch(new PartitionKey(entity.EntityId));
             foreach (var raisedEvent in raisedEvents)
             {
-                transaction.CreateItem(raisedEvent);
+                transaction = transaction.CreateItem(raisedEvent);
             }
-            await transaction.ExecuteAsync();
+            var result = await transaction.ExecuteAsync();
+            if (!result.IsSuccessStatusCode)
+                throw new InvalidOperationException(result.ErrorMessage);
         }
     }
 }

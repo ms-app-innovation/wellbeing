@@ -66,6 +66,7 @@ public class WellbeingEventSourcingV9
         var eventSourceRepository = new EventSourcedObjectRepository<WellBeingStatusEventSourced>(cosmosClient);
 
         var existing = await eventSourceRepository.Get(name);
+        existing ??= new WellBeingStatusEventSourced(email);
         existing.RecordNewWellbeingStatus(responseMessage, score);
         await eventSourceRepository.Save(existing);
 
