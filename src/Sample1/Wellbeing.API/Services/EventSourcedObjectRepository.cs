@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Wellbeing.API.Domain.EventSourced;
 
@@ -30,14 +29,12 @@ public class EventSourcedObjectRepository<T> where T : EventSourcedDomainObject
             requestOptions: new QueryRequestOptions
             {
                 PartitionKey = new PartitionKey(id)
-            });
+            }).OrderBy(x => x.EventIndex);
 
         foreach (var evt in events)
         {
             //This code is not production grade! Just getting a sample up and running.
-            var customEventObject = (JObject)evt.CustomEvent;
-            var eventObject = (ISampleEventSourceEvent)customEventObject.ToObject(Type.GetType(evt.CustomEventType));
-            allEvents.Add(eventObject);
+            allEvents.Add(evt.SourceEvent());
         }
 
         if (allEvents.Any())

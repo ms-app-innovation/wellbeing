@@ -22,7 +22,8 @@ public abstract class EventSourcedDomainObject
         Dispatch(@event);
         _raisedEvents.Add(new SerialisedEvent()
         {
-            Id = _eventCount.ToString(),
+            Id = Guid.NewGuid().ToString(), 
+            EventIndex = _eventCount,
             CustomEvent = @event,
             EntityId = EntityId,
             CustomEventType = @event.GetType().FullName
