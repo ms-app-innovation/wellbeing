@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs;
@@ -53,24 +54,30 @@ public class CosmosDispatcher
         IReadOnlyList<WellBeingStatus> documents,
         [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]
         CosmosClient cosmosClient,
-        [DurableClient]IDurableOrchestrationClient durableOrchestrationClient
+        [DurableClient] IDurableOrchestrationClient durableOrchestrationClient
     )
     {
         if (documents != null && documents.Count > 0)
+        {
             foreach (var document in documents)
-                if (document.Outbox?.Count > 0)
+            {
+                while (document.Outbox?.Any() ?? false)
                 {
-                    foreach (var message in document.Outbox)
-                        
-                        await Dispatch(
-                            durableOrchestrationClient,
-                            _correspondenceService,
-                            document,
-                            message);
+                    var message = document.Outbox.Last();
+                    
+                    await Dispatch(
+                        durableOrchestrationClient,
+                        _correspondenceService,
+                        document,
+                        message);
 
-                    document.Outbox = new List<OutgoingMessage>();
+                    document.Outbox.Remove(message);
+                    
+                    //Always update the state after successfully dispatching a message
                     await DataService.SaveStateAsync(cosmosClient, document);
                 }
+            }
+        }
     }
 
     private async Task Dispatch(
