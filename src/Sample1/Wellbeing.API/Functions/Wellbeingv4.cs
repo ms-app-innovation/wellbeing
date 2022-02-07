@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
+using Wellbeing.API.Domain;
 using Wellbeing.API.Providers;
 using Wellbeing.API.Services;
 

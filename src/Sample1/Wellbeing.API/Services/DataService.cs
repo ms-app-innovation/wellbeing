@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
+using Wellbeing.API.Domain;
 
 namespace Wellbeing.API.Services;
 

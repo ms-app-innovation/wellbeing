@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Wellbeing.API.Services;
+namespace Wellbeing.API.Domain;
 
 public class OutgoingMessage
 {

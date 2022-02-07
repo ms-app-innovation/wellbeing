@@ -6,6 +6,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using Wellbeing.API.Domain;
 using Wellbeing.API.Services;
 
 namespace Wellbeing.API.Functions;

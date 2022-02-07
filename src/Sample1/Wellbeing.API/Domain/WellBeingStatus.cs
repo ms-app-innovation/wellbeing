@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace Wellbeing.API.Services;
+namespace Wellbeing.API.Domain;
 
 public class WellBeingStatus
 {
