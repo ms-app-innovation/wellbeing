@@ -94,9 +94,14 @@ public class CosmosDispatcher
             );
         } else  if (message.Target == "Orchestrator")
         {
-            //TODO: Graeme to help determine why Orchestrator name is not being retrieved here - until then its hardcoded
-            //await durableOrchestrationClient.StartNewAsync(message.Data["OrchestratorName"], message);
-            await durableOrchestrationClient.StartNewAsync("Orchestrator", message);
+            if (message.Data.ContainsKey("OrchestratorName"))
+            {
+                await durableOrchestrationClient.StartNewAsync(message.Data["OrchestratorName"], message);
+            }
+            else
+            {
+                _logger.LogWarning("Dispatcher received Orchestrator message but was missing OrchestratorName property inside the data bag.");
+            }
         }
     }
 }
