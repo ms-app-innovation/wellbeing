@@ -67,7 +67,7 @@ public class Wellbeingv4
             Name = name,
             Score = score
         };
-        existing.RecordNewWellbeingStatus(responseMessage, score, new OutgoingMessage()
+        existing.RecordNewWellbeingStatus(responseMessage, score, new OutgoingMessage
         {
             Target = "Orchestrator",
             Id = Guid.NewGuid(),
@@ -91,7 +91,7 @@ public class Wellbeingv4
     {
         var message = context.GetInput<OutgoingMessage>();
 
-        var parallelTasks = new List<Task>();        
+        var parallelTasks = new List<Task>();
 
         parallelTasks.Add(context.CallActivityWithRetryAsync(
             "SendMessageActivity",
@@ -110,16 +110,18 @@ public class Wellbeingv4
     public async Task SendMessageActivity(
         [ActivityTrigger] IDurableActivityContext context)
     {
-        var message = context.GetInput<OutgoingMessage>();        
-        await _correspondenceService.SendEmailAsync(message.Data["Id"], message.Data["ResponseMessage"], "Durable Function Send Message Activity");
+        var message = context.GetInput<OutgoingMessage>();
+        await _correspondenceService.SendEmailAsync(message.Data["Id"], message.Data["ResponseMessage"],
+            "Durable Function Send Message Activity");
     }
 
     [FunctionName("BroadcastSentimentActivity")]
     public async Task BroadcastSentimentActivity(
-    [ActivityTrigger] IDurableActivityContext context,
-    [EventGrid(TopicEndpointUri = "EventGridTopicUri", TopicKeySetting = "EventGridTopicKey")] IAsyncCollector<EventGridEvent> outputEvents)
+        [ActivityTrigger] IDurableActivityContext context,
+        [EventGrid(TopicEndpointUri = "EventGridTopicUri", TopicKeySetting = "EventGridTopicKey")]
+        IAsyncCollector<EventGridEvent> outputEvents)
     {
-        var message = context.GetInput<OutgoingMessage>();        
+        var message = context.GetInput<OutgoingMessage>();
         await outputEvents.AddAsync(new EventGridEvent("subject", "eventType", "dataVersion", message));
     }
 }
