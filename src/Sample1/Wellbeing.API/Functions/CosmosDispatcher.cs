@@ -91,7 +91,7 @@ public class CosmosDispatcher
                 throw new ArgumentException("Introducing range exception to test function retry policy");
             }
 
-            await correspondenceService.SendEmailAsync(
+            await correspondenceService.CorrespondAsync(
                 entity.Email,
                 message.Data["ResponseMessage"],
                 message.Data.ContainsKey("MessageType") ? message.Data["MessageType"] : "Unknown Type"

@@ -19,7 +19,12 @@ public class CorrespondenceService
         _logger = logger;
     }
 
-    public async Task SendEmailAsync(string emailId, string responseMessage, string messagingType = "Unknown Type")
+    public async Task CorrespondAsync(
+        string emailId, 
+        string responseMessage, 
+        string messagingType = "Unknown Type", 
+        string correlationId = null,
+        string targetSystem = null)
     {
         var emailObject = new
         {
@@ -27,7 +32,9 @@ public class CorrespondenceService
             EmailSubject = "Your Wellbeing",
             EmailMessage = $@"Sent using {messagingType}<br>
 -----------------------<br>
-{responseMessage}"
+{responseMessage}",
+            CorrelationId = correlationId,
+            TargetSystem = targetSystem
         };
         var content = new StringContent(JsonConvert.SerializeObject(emailObject), Encoding.UTF8, "application/json");
         var response = await _httpClient.PostAsync(GetEnvironmentVariable("EmailServiceUrl"), content);

@@ -80,7 +80,7 @@ public class Wellbeingv2
         ILogger log)
     {
         if (message.Target == "CorrespondenceService")
-            await _correspondenceService.SendEmailAsync(
+            await _correspondenceService.CorrespondAsync(
                 message.Data["Email"],
                 "Task Queue",
                 message.Data["ResponseMessage"]);

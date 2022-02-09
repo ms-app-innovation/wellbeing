@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Extensions.EventGrid;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
+using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
@@ -25,19 +26,20 @@ namespace Wellbeing.API.Functions;
 /// <summary>
 ///     This version uses an Outbox pattern, and a dispatcher, to handle the call to the Correspondence Service
 /// </summary>
-public class Wellbeingv4
+public class Wellbeingv5
 {
     private readonly CorrespondenceService _correspondenceService;
-    private readonly ILogger<Wellbeingv4> _logger;
+    private readonly ILogger<Wellbeingv5> _logger;
 
-    public Wellbeingv4(ILogger<Wellbeingv4> log, CorrespondenceService correspondenceService)
+    public Wellbeingv5(ILogger<Wellbeingv5> log, CorrespondenceService correspondenceService)
     {
         _logger = log;
         _correspondenceService = correspondenceService;
     }
 
 
-    [FunctionName("Wellbeing-v4")]
+    #region Function pointing to OrchestratorProcessManager
+    [FunctionName("Wellbeing-v5")]
     [OpenApiOperation("Run", "name")]
     [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
     [OpenApiRequestBody("application/json", typeof(Parameters), Description = "Parameters", Required = true)]
@@ -74,7 +76,7 @@ public class Wellbeingv4
             Data = new Dictionary<string, string>
             {
                 ["Id"] = email,
-                ["OrchestratorName"] = "Orchestrator",
+                ["OrchestratorName"] = "OrchestratorProcessManager",
                 ["ResponseMessage"] = responseMessage
             }
         });
@@ -85,43 +87,59 @@ public class Wellbeingv4
 
         return new JsonResult(responseMessage);
     }
+    #endregion
 
-    [FunctionName("Orchestrator")]
+    [FunctionName("OrchestratorProcessManager")]
     public async Task RunOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
     {
         var message = context.GetInput<OutgoingMessage>();
 
-        var parallelTasks = new List<Task>();
-
-        parallelTasks.Add(context.CallActivityWithRetryAsync(
-            "SendMessageActivity",
+        await context.CallActivityWithRetryAsync(
+            "SendMessageActivity-v5",
             new RetryOptions(TimeSpan.FromSeconds(1), 10),
-            message));
+            message);
 
-        parallelTasks.Add(context.CallActivityWithRetryAsync(
-            "BroadcastSentimentActivity",
+        await context.WaitForExternalEvent("CorrespondenceSent-v5");
+
+        await context.CallActivityWithRetryAsync(
+            "BroadcastSentimentActivity-v5",
             new RetryOptions(TimeSpan.FromSeconds(1), 10),
-            message));
+            message);
 
-        await Task.WhenAll(parallelTasks);
     }
 
-    [FunctionName("SendMessageActivity")]
-    public async Task SendMessageActivity(
+    [FunctionName("SendMessageActivity-v5")]
+    public async Task SendMessageActivityv5(
         [ActivityTrigger] IDurableActivityContext context)
     {
-        var message = context.GetInput<OutgoingMessage>();
-        await _correspondenceService.CorrespondAsync(message.Data["Id"], message.Data["ResponseMessage"],
-            "Durable Function Send Message Activity");
+        var input = context.GetInput<OutgoingMessage>();
+        
+        await _correspondenceService.CorrespondAsync(
+            input.Data["Id"], 
+            input.Data["ResponseMessage"],
+            "Process Manager Send Message Activity",
+            context.InstanceId,
+            "wellbeing-v5");
     }
 
-    [FunctionName("BroadcastSentimentActivity")]
-    public async Task BroadcastSentimentActivity(
+    [FunctionName("BroadcastSentimentActivity-v5")]
+    public async Task BroadcastSentimentActivityV5(
         [ActivityTrigger] IDurableActivityContext context,
-        [EventGrid(TopicEndpointUri = "EventGridTopicUri", TopicKeySetting = "EventGridTopicKey")]
+        [EventGrid(TopicEndpointUri = "EventGridTopicUri", TopicKeySetting = "EventGridTopicUri")]
         IAsyncCollector<EventGridEvent> outputEvents)
     {
         var message = context.GetInput<OutgoingMessage>();
         await outputEvents.AddAsync(new EventGridEvent("subject", "eventType", "dataVersion", message));
+    }
+
+    [FunctionName("WaitForEmailSend-v5")]
+    public async Task WaitForEmailSendV5(
+        [ServiceBusTrigger("correspondencesent", "WellBeingService", Connection = "ServiceBusConnectionString")] string queueItem,
+        [DurableClient] IDurableOrchestrationClient durableOrchestrationClient,
+        Int32 deliveryCount,
+        DateTime enqueuedTimeUtc,
+        string messageId)
+    {
+        await durableOrchestrationClient.RaiseEventAsync(queueItem, "CorrespondenceSent-v5");
     }
 }
