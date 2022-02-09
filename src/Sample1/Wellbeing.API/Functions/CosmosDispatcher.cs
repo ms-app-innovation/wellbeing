@@ -100,7 +100,14 @@ public class CosmosDispatcher
         else if (message.Target == "Orchestrator")
         {
             if (message.Data.ContainsKey("OrchestratorName"))
-                await durableOrchestrationClient.StartNewAsync(message.Data["OrchestratorName"], message);
+                try
+                {
+                    await durableOrchestrationClient.StartNewAsync(message.Data["OrchestratorName"], message);
+                }
+                catch (ArgumentException)
+                {
+                    //invalid function - I changed the name of an orchestrator and triggered this.
+                }
             else
                 _logger.LogWarning(
                     "Dispatcher received Orchestrator message but was missing OrchestratorName property inside the data bag.");
