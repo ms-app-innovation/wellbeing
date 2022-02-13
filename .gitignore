@@ -354,3 +354,4 @@ MigrationBackup/
 
 #Azure functions (this is matched by another rule but can't see which!)
 local.settings.json
+src/api/local.settings.json
