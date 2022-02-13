@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "CosmosDBConnectionString": "",
+    "EmailServiceUrl": "",
+    "StorageConnectionString": "",
+    "EventGridTopicUri": "",
+    "EventGridTopicKey": "",
+    "ServiceBusConnectionString" :  ""
+  }
+}
