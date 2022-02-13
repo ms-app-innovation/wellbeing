@@ -56,32 +56,35 @@ public class Wellbeingv4
         int score = Convert.ToInt32(data["score"]);
         string email = data["email"];
 
-        var responseMessage = string.IsNullOrEmpty(email)
-            ? "Invalid Inputs."
-            : new RecommendationProvider(name, score).Recommendation;
+        var responseMessage = "Invalid Inputs.";
 
-        var existing = await DataService.FetchAsync(cosmosClient, email);
-        existing ??= new WellBeingStatus
+        if (!string.IsNullOrEmpty(email) && email.Contains(AppConfig.GetEnvironmentVariable("ValidEmailDomain")))
         {
-            Email = email,
-            Name = name,
-            Score = score
-        };
-        existing.RecordNewWellbeingStatus(responseMessage, score, new OutgoingMessage
-        {
-            Target = "Orchestrator",
-            Id = Guid.NewGuid(),
-            Data = new Dictionary<string, string>
+            responseMessage = new RecommendationProvider(name, score).Recommendation;
+
+            var existing = await DataService.FetchAsync(cosmosClient, email);
+            existing ??= new WellBeingStatus
             {
-                ["Id"] = email,
-                ["OrchestratorName"] = "Orchestrator",
-                ["ResponseMessage"] = responseMessage
-            }
-        });
+                Email = email,
+                Name = name,
+                Score = score
+            };
+            existing.RecordNewWellbeingStatus(responseMessage, score, new OutgoingMessage
+            {
+                Target = "Orchestrator",
+                Id = Guid.NewGuid(),
+                Data = new Dictionary<string, string>
+                {
+                    ["Id"] = email,
+                    ["OrchestratorName"] = "Orchestrator",
+                    ["ResponseMessage"] = responseMessage
+                }
+            });
 
-        await DataService.SaveStateAsync(cosmosClient, existing);
+            await DataService.SaveStateAsync(cosmosClient, existing);
 
-        _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
+            _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
+        }
 
         return new JsonResult(responseMessage);
     }

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Wellbeing.API.Providers;
 
 namespace Wellbeing.API.Services;
 
@@ -37,13 +38,9 @@ public class CorrespondenceService
             TargetSystem = targetSystem
         };
         var content = new StringContent(JsonConvert.SerializeObject(emailObject), Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync(GetEnvironmentVariable("EmailServiceUrl"), content);
+        var response = await _httpClient.PostAsync(AppConfig.GetEnvironmentVariable("EmailServiceUrl"), content);
         _logger.LogInformation("Corresponded to {Employee}", emailId);
         if (response.StatusCode != HttpStatusCode.Accepted) throw new Exception("Unable to send email");
     }
 
-    private static string GetEnvironmentVariable(string name)
-    {
-        return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process);
-    }
 }

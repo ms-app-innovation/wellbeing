@@ -50,22 +50,24 @@ public class Wellbeingv1
         int score = Convert.ToInt32(data["score"]);
         string email = data["email"];
 
-        var responseMessage = string.IsNullOrEmpty(email)
-            ? "Invalid Inputs."
-            : new RecommendationProvider(name, score).Recommendation;
+        var responseMessage = "Invalid Inputs.";        
 
-        await _correspondenceService.CorrespondAsync(email, "Tightly Coupled", responseMessage);
-
-        await DataService.SaveStateAsync(cosmosClient, new WellBeingStatus
+        if (!string.IsNullOrEmpty(email) && email.Contains(AppConfig.GetEnvironmentVariable("ValidEmailDomain")))
         {
-            Name = name,
-            Score = score,
-            Email = email,
-            Recommendation = responseMessage
-        });
+            responseMessage = new RecommendationProvider(name, score).Recommendation;
 
+            await _correspondenceService.CorrespondAsync(email, "Tightly Coupled", responseMessage);
 
-        _logger.LogInformation("Wellbeing API has been processed the recommendation.");
+            await DataService.SaveStateAsync(cosmosClient, new WellBeingStatus
+            {
+                Name = name,
+                Score = score,
+                Email = email,
+                Recommendation = responseMessage
+            });
+
+            _logger.LogInformation("Wellbeing API has been processed the recommendation.");
+        }
 
         return new JsonResult(responseMessage);
     }
