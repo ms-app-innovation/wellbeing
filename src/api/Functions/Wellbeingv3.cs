@@ -53,31 +53,35 @@ public class Wellbeingv3
         int score = Convert.ToInt32(data["score"]);
         string email = data["email"];
 
-        var responseMessage = string.IsNullOrEmpty(email)
-            ? "Invalid Inputs."
-            : new RecommendationProvider(name, score).Recommendation;
+        var responseMessage = "Invalid Inputs.";
 
-        var existing = await DataService.FetchAsync(cosmosClient, email);
-        existing ??= new WellBeingStatus
+        if (!string.IsNullOrEmpty(email) && email.Contains(AppConfig.GetEnvironmentVariable("ValidEmailDomain")))
         {
-            Email = email,
-            Name = name,
-            Score = score
-        };
+            responseMessage = new RecommendationProvider(name, score).Recommendation;
 
-        existing.RecordNewWellbeingStatus(responseMessage, score, new OutgoingMessage
-        {
-            Id = Guid.NewGuid(),
-            Target = "CorrespondenceService",
-            Data = new Dictionary<string, string>
+            var existing = await DataService.FetchAsync(cosmosClient, email);
+            existing ??= new WellBeingStatus
             {
-                ["ResponseMessage"] = responseMessage,
-                ["MessageType"] = "Cosmos Change Feed"
-            }
-        });
+                Email = email,
+                Name = name,
+                Score = score
+            };
 
-        await DataService.SaveStateAsync(cosmosClient, existing);
-        _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
+            existing.RecordNewWellbeingStatus(responseMessage, score, new OutgoingMessage
+            {
+                Id = Guid.NewGuid(),
+                Target = "CorrespondenceService",
+                Data = new Dictionary<string, string>
+                {
+                    ["ResponseMessage"] = responseMessage,
+                    ["MessageType"] = "Cosmos Change Feed"
+                }
+            });
+
+            await DataService.SaveStateAsync(cosmosClient, existing);
+            _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
+        }
+
         return new JsonResult(responseMessage);
     }
 }

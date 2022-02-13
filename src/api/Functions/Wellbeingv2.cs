@@ -18,20 +18,20 @@ using Wellbeing.API.Services;
 
 namespace Wellbeing.API.Functions;
 
-public class Wellbeingv1
+public class Wellbeingv2
 {
     private readonly CorrespondenceService _correspondenceService;
-    private readonly ILogger<Wellbeingv1> _logger;
+    private readonly ILogger<Wellbeingv2> _logger;
 
 
-    public Wellbeingv1(ILogger<Wellbeingv1> log, CorrespondenceService correspondenceService)
+    public Wellbeingv2(ILogger<Wellbeingv2> log, CorrespondenceService correspondenceService)
     {
         _logger = log;
         _correspondenceService = correspondenceService;
     }
 
 
-    [FunctionName("Wellbeing-v1")]
+    [FunctionName("Wellbeing-v2")]
     [OpenApiOperation("Run", "name")]
     [OpenApiSecurity("function_key", SecuritySchemeType.ApiKey, Name = "code", In = OpenApiSecurityLocationType.Query)]
     [OpenApiRequestBody("application/json", typeof(Parameters), Description = "Parameters", Required = true)]
@@ -40,9 +40,11 @@ public class Wellbeingv1
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]
         HttpRequest req,
         [CosmosDB("wellbeing-db", "recommendation", Connection = "CosmosDBConnectionString")]
-        CosmosClient cosmosClient)
+        CosmosClient cosmosClient,
+        [Queue("wellbeing-email-q")] [StorageAccount("StorageConnectionString")]
+        IAsyncCollector<OutgoingMessage> msg)
     {
-        _logger.LogInformation("Wellbeing API has been called");
+        _logger.LogInformation("Wellbeing API has been called.");
 
         var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         dynamic data = JsonConvert.DeserializeObject(requestBody);
@@ -50,23 +52,41 @@ public class Wellbeingv1
         int score = Convert.ToInt32(data["score"]);
         string email = data["email"];
 
-        var responseMessage = string.IsNullOrEmpty(email)
-            ? "Invalid Inputs."
-            : new RecommendationProvider(name, score).Recommendation;
+        var responseMessage = "Invalid Inputs.";
 
-        await _correspondenceService.CorrespondAsync(email, "Tightly Coupled", responseMessage);
-
-        await DataService.SaveStateAsync(cosmosClient, new WellBeingStatus
+        if (!string.IsNullOrEmpty(email) && email.Contains(AppConfig.GetEnvironmentVariable("ValidEmailDomain")))
         {
-            Name = name,
-            Score = score,
-            Email = email,
-            Recommendation = responseMessage
-        });
+            responseMessage = new RecommendationProvider(name, score).Recommendation;
+
+            await StorageQueueService.QueueMessageAsync(msg, email, responseMessage);
+
+            await DataService.SaveStateAsync(cosmosClient,
+                new WellBeingStatus
+                {
+                    Name = name,
+                    Score = score,
+                    Email = email,
+                    Recommendation = responseMessage
+                });
 
 
-        _logger.LogInformation("Wellbeing API has been processed the recommendation.");
+            _logger.LogInformation("Wellbeing API has been processed the recommendation.");
+        }
 
         return new JsonResult(responseMessage);
+    }
+
+    [FunctionName("WellbeingEmailer")]
+    public async Task WellbeingEmailer(
+        [QueueTrigger("wellbeing-email-q")] [StorageAccount("StorageConnectionString")]
+        OutgoingMessage message,
+        ILogger log)
+    {
+        if (message.Target == "CorrespondenceService")
+            await _correspondenceService.CorrespondAsync(
+                message.Data["Email"],
+                "Task Queue",
+                message.Data["ResponseMessage"]);
+        log.LogInformation("C# queue emails sent");
     }
 }

@@ -1,0 +1,54 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "sites_demo_eda_name": {
+            "value": null
+        },
+        "workflows_HRSystem_name": {
+            "value": null
+        },
+        "connections_office365_name": {
+            "value": null
+        },
+        "connections_servicebus_name": {
+            "value": null
+        },
+        "components_demo_eda_name": {
+            "value": null
+        },
+        "staticSites_wellbeing_app_name": {
+            "value": null
+        },
+        "connections_azureeventgrid_name": {
+            "value": null
+        },
+        "topics_eda_demo_topic_name": {
+            "value": null
+        },
+        "storageAccounts_edastore_name": {
+            "value": null
+        },
+        "workflows_CorrespondenceSystem_name": {
+            "value": null
+        },
+        "namespaces_contoso_eda_demo_name": {
+            "value": null
+        },
+        "databaseAccounts_wellbeingstore_name": {
+            "value": null
+        },
+        "smartdetectoralertrules_failure_anomalies___demo_eda_name": {
+            "value": null
+        },
+        "actiongroups_application_insights_smart_detection_externalid": {
+            "value": null
+        },
+        "workspaces_defaultworkspace_8c98d9ee_59e7_4a29_a204_2e7c8471fda1_eau_externalid": {
+            "value": null
+        },
+        "serverfarms_ASP_eventdrivenrg_9ed9_externalid": {
+            "value": null
+        }
+    }
+}

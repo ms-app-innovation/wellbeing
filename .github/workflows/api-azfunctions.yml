@@ -1,26 +1,26 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Azure Function CI
+name: Azure Function App CI/CD
 
 on:
   push:
     branches:
       - main
     paths: 
-      - 'src/Sample1/**'
+      - 'src/api/**'
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
     paths:
-      - 'src/Sample1/**'
+      - 'src/api/**'
 
 # CONFIGURATION
 # For help, go to https://github.com/Azure/Actions
 
 env:
   AZURE_FUNCTIONAPP_NAME: demo-eda  # set this to your application's name
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: './src/Sample1'    # set this to the path to your web app project, defaults to the repository root
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './src/'    # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '6.0'              # set this to the dotnet version to use
 
 jobs:

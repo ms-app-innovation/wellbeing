@@ -57,20 +57,23 @@ public class WellbeingEventSourcingV9
         int score = Convert.ToInt32(data["score"]);
         string email = data["email"];
 
-        var responseMessage = string.IsNullOrEmpty(email)
-            ? "Invalid Inputs."
-            : new RecommendationProvider(name, score).Recommendation;
-
+        var responseMessage = "Invalid Inputs.";
         #endregion
 
-        var eventSourceRepository = new EventSourcedObjectRepository<WellBeingStatusEventSourced>(cosmosClient);
+        if (!string.IsNullOrEmpty(email) && email.Contains(AppConfig.GetEnvironmentVariable("ValidEmailDomain")))
+        {
+            responseMessage = new RecommendationProvider(name, score).Recommendation;
 
-        var existing = await eventSourceRepository.Get(name);
-        existing ??= new WellBeingStatusEventSourced(email);
-        existing.RecordNewWellbeingStatus(responseMessage, score);
-        await eventSourceRepository.Save(existing);
+            var eventSourceRepository = new EventSourcedObjectRepository<WellBeingStatusEventSourced>(cosmosClient);
 
-        _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
+            var existing = await eventSourceRepository.Get(name);
+            existing ??= new WellBeingStatusEventSourced(email);
+            existing.RecordNewWellbeingStatus(responseMessage, score);
+            await eventSourceRepository.Save(existing);
+
+            _logger.LogInformation("Wellbeing API has been processed the recommendation using the Outbox pattern");
+        }
+
         return new JsonResult(responseMessage);
     }
 }
