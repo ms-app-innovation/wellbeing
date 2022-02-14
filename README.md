@@ -75,6 +75,144 @@ swa start http://localhost:3000 --api-location ./api
 - Peek lock for competing consumers
 
 
+### Outbox Pattern
+#### Use the transactional outbox pattern.
+![Outbox pattern](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/3.png)
+
+#### Pros
+- Removes distributed transaction
+- Improves SLA of customer interaction
+
+#### Cons
+- More complex to build and operate
+
+#### Recommendations
+- If it’s vital to transactionally send messages, and to keep a high level of service for the end user, then this pattern is a great solution.
 
 
 
+### Broadcast events
+#### Broadcast events from the Wellbeing app.
+![Broadcast events](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/4.png)
+
+#### Pros
+- Decouples Wellbeing app from downstream consumers
+
+#### Cons
+- Lacks 'Statement of overall system behavior'
+
+#### Recommendations
+- Event Grid / Service Bus Topic
+
+
+
+### Event-carried state transfer
+#### Event-carried State Transfer vs thin events.
+![Event state](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/5.png)
+
+#### Pros
+- Reduces # of recievers who need to call the producer for data
+
+#### Cons
+- Need to deal Eventual Consistency
+- Increases the size of data sent from the application
+
+#### Recommendations
+- Think about Event-Grid Schema vs Cloud-Event Schema
+
+
+### Saga: Process Manager
+#### Choice 1: Process Manager using Durable Functions.
+![Process Manager](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/6.png)
+
+#### Pros
+- Can model complex business processes
+- Can version for new / roll out canaries
+#### Cons
+- Difficult to version in-process workflows
+- Boiler plate code hides logic
+- Business logic can creep in (ESB effect)
+- Grows quickly in complexity
+#### Recommendation
+- Great for pipelines within a service
+
+
+### Saga: Choreography
+#### Choice 2: Switch to a choreography approach.
+![Choreography](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/7.png)
+
+#### Pros
+- Complex behaviour arises through events without central coordination
+#### Cons
+- Difficult to version long running processes
+- Our scenario required emails to be sent. We can’t know for sure if they were
+- Complex processes become difficult to follow and report on
+- Complexity increases when actions involve more and more events
+#### Recommendation
+- Great when the business processes being driven are unrelated
+
+
+### Routing Slip Pattern
+#### Choice 3: Routing Slip.
+![Routing Slip](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/8.png)
+
+#### Pros
+- Simple to implement
+- Requires no overarching orchestration
+#### Cons
+- Difficult to version long running in-progress workflows
+#### Recommendation
+- Great for sequential business processes where you may need to compensate.
+
+
+### Third Party Solutions
+#### Choice 4: Third party such as NServiceBus.
+![NServiceBus](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/9.png)
+
+#### Pros
+Can model complex business processes
+Easy to version / roll out canaries
+Handles poison messages
+Message de-duplication at service bus
+#### Cons
+Tendency for business logic to sneak into the process manager
+#### Recommendation
+Use for complex business processes
+Buy, don’t build
+
+
+
+### CQRS
+#### Option 1: “As simple as possible, but no simpler”.
+![CQRS](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/10.png)
+
+#### Pros
+- Very simple
+- Can achieve massive scale by scaling out reads to replicas
+#### Cons
+- _May_ hit a natural scale limit
+- Some reports may become very complicated to generate from the model used to store the data
+#### Recommendation
+- Great if it fits your needs
+- Be wary of querying a NOSQL Database as-if it was SQL
+
+
+### Event Sourcing
+#### Option 2: use event sourcing and pre-build the report.
+![Eventsourcing](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/11.png)
+
+#### Pros
+- Elegant model
+#### Cons
+- More complex to build
+- More complex to operate
+- Hotfixes are complicated
+#### Recommendation
+- Great with domains that are event based (e.g., financial transactions, share price changes)
+- Use an abstraction like NEventStore
+- Don’t let external services couple to your internal event sourcing events. 
+
+
+
+## Considerations
+![Considerations](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/12.png)
