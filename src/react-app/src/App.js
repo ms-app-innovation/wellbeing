@@ -72,6 +72,9 @@ function App() {
                             <option value="/api/wellbeing-v9">v9 - Event Sourcing</option>
                         </select>
                     </p>
+                    <p>
+                        <a href="https://github.com/ms-app-innovation/wellbeing">Source Code on GitHub</a> 
+                    </p>
                 </div>
             }
 
