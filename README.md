@@ -43,5 +43,38 @@ swa start http://localhost:3000 --api-location ./api
 
 ## Patterns Explored
 ### Temporal Coupling
+#### Single App calls external correspondence service
 ![Temporal Coupling](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/1.png)
+
+#### Pros
+- Simple architecture
+- asdasd 
+#### Cons
+- Tight coupling to downstream services
+- Lacking resilience 
+- Dependency on downstream system can inhibit scalability
+
+
+### Simple decoupling
+#### Introduce a queue. Send a message.
+![Decoupling using a queue](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/2.png)
+
+#### Pros
+- Increased resiliency to downstream failures
+- Can scale the correspondence for high load
+
+#### Cons
+- Additional services to manage
+- Queue being down
+- Potential to send the message multiple times
+
+#### Recommendations
+- Use an Azure queue
+- Simple, cheap, no need for sessions, ordering, etc.
+- Simple poison message handling
+- Peek lock for competing consumers
+
+
+
+
 
