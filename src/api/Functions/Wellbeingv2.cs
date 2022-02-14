@@ -56,9 +56,7 @@ public class Wellbeingv2
 
         if (!string.IsNullOrEmpty(email) && email.Contains(AppConfig.GetEnvironmentVariable("ValidEmailDomain")))
         {
-            responseMessage = new RecommendationProvider(name, score).Recommendation;
-
-            await StorageQueueService.QueueMessageAsync(msg, email, responseMessage);
+            responseMessage = new RecommendationProvider(name, score).Recommendation;            
 
             await DataService.SaveStateAsync(cosmosClient,
                 new WellBeingStatus
@@ -69,8 +67,9 @@ public class Wellbeingv2
                     Recommendation = responseMessage
                 });
 
+            await StorageQueueService.QueueMessageAsync(msg, email, responseMessage);
 
-            _logger.LogInformation("Wellbeing API has been processed the recommendation.");
+            _logger.LogInformation("Wellbeing API has been processed the recommendation using Queue message pattern.");
         }
 
         return new JsonResult(responseMessage);
