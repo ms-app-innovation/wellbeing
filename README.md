@@ -42,6 +42,6 @@ swa start http://localhost:3000 --api-location ./api
 
 
 ## Patterns Explored
-1. Temporal Coupling
-![alt text](image.jpg)
+### Temporal Coupling
+![Temporal Coupling](https://github.com/ms-app-innovation/wellbeing/raw/main/docs/images/1.png)
 
